@@ -602,33 +602,34 @@ function loadSheet(sheetName) {
 function renderColSelector() {
   buildColChecks(numericCols);
   document.getElementById('col-card').classList.add('show');
- 
-  document.getElementById('col-search').addEventListener('input', function() {
-    const q = this.value.toLowerCase();
-    buildColChecks(numericCols.filter(c => c.toLowerCase().includes(q)));
-  });
-  document.getElementById('sel-all-btn').addEventListener('click', () => {
-    document.querySelectorAll('#col-checks .col-check').forEach(el => {
-      el.classList.add('checked'); el.querySelector('input').checked = true;
-      el.querySelector('.tick').textContent = '✓';
-    }); updateSelected();
-  });
-  document.getElementById('desel-all-btn').addEventListener('click', () => {
-    document.querySelectorAll('#col-checks .col-check').forEach(el => {
-      el.classList.remove('checked'); el.querySelector('input').checked = false;
-      el.querySelector('.tick').textContent = '';
-    }); updateSelected();
-  });
-  document.getElementById('sel-first-btn').addEventListener('click', () => {
-    document.querySelectorAll('#col-checks .col-check').forEach((el, i) => {
-      const on = i < 3;
-      el.classList.toggle('checked', on); el.querySelector('input').checked = on;
-      el.querySelector('.tick').textContent = on ? '✓' : '';
-    }); updateSelected();
-  });
   setTimeout(() => document.getElementById('col-card').scrollIntoView({ behavior:'smooth', block:'start' }), 100);
   updateSelected();
 }
+ 
+// ── Column selector button listeners — attached ONCE, not per file load ─────
+document.getElementById('col-search').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  buildColChecks(numericCols.filter(c => c.toLowerCase().includes(q)));
+});
+document.getElementById('sel-all-btn').addEventListener('click', () => {
+  document.querySelectorAll('#col-checks .col-check').forEach(el => {
+    el.classList.add('checked'); el.querySelector('input').checked = true;
+    el.querySelector('.tick').textContent = '✓';
+  }); updateSelected();
+});
+document.getElementById('desel-all-btn').addEventListener('click', () => {
+  document.querySelectorAll('#col-checks .col-check').forEach(el => {
+    el.classList.remove('checked'); el.querySelector('input').checked = false;
+    el.querySelector('.tick').textContent = '';
+  }); updateSelected();
+});
+document.getElementById('sel-first-btn').addEventListener('click', () => {
+  document.querySelectorAll('#col-checks .col-check').forEach((el, i) => {
+    const on = i < 3;
+    el.classList.toggle('checked', on); el.querySelector('input').checked = on;
+    el.querySelector('.tick').textContent = on ? '✓' : '';
+  }); updateSelected();
+});
  
 function buildColChecks(cols) {
   const wrap = document.getElementById('col-checks');
@@ -703,79 +704,113 @@ function percentile(arr, p) {
 }
  
 function runSimulation() {
-  const n = parseInt(document.getElementById('sim-count').value);
-  const method = document.getElementById('sim-method').value;
-  const years = parseInt(document.getElementById('forecast-years').value);
-  const step = document.getElementById('time-step').value;
+  const n       = parseInt(document.getElementById('sim-count').value);
+  const method  = document.getElementById('sim-method').value;
+  const years   = parseInt(document.getElementById('forecast-years').value);
+  const step    = document.getElementById('time-step').value;
   const seedVal = document.getElementById('rand-seed').value;
-  const rand = seededRandom(seedVal !== '' ? parseInt(seedVal) : null);
+  const rand    = seededRandom(seedVal !== '' ? parseInt(seedVal) : null);
  
-  const steps = step === 'annual' ? years : years * 4;
+  const steps    = step === 'annual' ? years : years * 4;
   const stepLabel = step === 'annual' ? 'Y' : 'Q';
-  const results = {};
+  const results  = {};
  
   selectedCols.forEach(col => {
-    const rawVals = rawData.map(r => parseFloat(r[col])).filter(v => !isNaN(v));
+    const rawVals = rawData.map(r => parseFloat(r[col])).filter(v => !isNaN(v) && isFinite(v));
     if (rawVals.length < 2) return;
  
-    const mu = rawVals.reduce((a,b)=>a+b,0) / rawVals.length;
-    const variance = rawVals.reduce((a,b)=>a+(b-mu)**2,0) / (rawVals.length-1);
-    const sigma = Math.sqrt(variance);
+    const n_obs   = rawVals.length;
+    const lastVal = rawVals[n_obs - 1];
  
-    // Log-return stats (for log-normal / GBM)
+    // ── Historical stats ──────────────────────────────────────────────
+    const mu      = rawVals.reduce((a,b)=>a+b,0) / n_obs;
+    const variance= rawVals.reduce((a,b)=>a+(b-mu)**2,0) / (n_obs - 1);
+    const sigma   = Math.sqrt(variance);           // std dev of raw values
+ 
+    // ── Log-returns (year-over-year changes) ──────────────────────────
+    // Used by lognormal, GBM. Captures proportional change per period.
     const logReturns = [];
-    for (let i=1; i<rawVals.length; i++) {
-      if (rawVals[i-1] > 0 && rawVals[i] > 0) logReturns.push(Math.log(rawVals[i]/rawVals[i-1]));
+    for (let i = 1; i < n_obs; i++) {
+      if (rawVals[i-1] > 0 && rawVals[i] > 0)
+        logReturns.push(Math.log(rawVals[i] / rawVals[i-1]));
     }
-    const muLR = logReturns.length > 0 ? logReturns.reduce((a,b)=>a+b,0)/logReturns.length : 0;
-    const sigmaLR = logReturns.length > 1 ? Math.sqrt(logReturns.reduce((a,b)=>a+(b-muLR)**2,0)/(logReturns.length-1)) : sigma/mu || 0.1;
-    const lastVal = rawVals[rawVals.length-1];
+    const muLR    = logReturns.reduce((a,b)=>a+b,0) / logReturns.length;
+    const sigmaLR = logReturns.length > 1
+      ? Math.sqrt(logReturns.reduce((a,b)=>a+(b-muLR)**2,0) / (logReturns.length-1))
+      : 0.02; // fallback 2% vol
  
-    // Current period simulations
-    const simsCurrent = [];
-    for (let i=0; i<n; i++) {
-      let v;
-      if (method === 'normal') {
-        v = mu + sigma * boxMuller(rand);
-      } else if (method === 'lognormal') {
-        const muLog = Math.log(mu**2/Math.sqrt(variance+mu**2));
-        const sigLog = Math.sqrt(Math.log(1+variance/mu**2));
-        v = Math.exp(muLog + sigLog * boxMuller(rand));
-      } else if (method === 'bootstrap') {
-        v = rawVals[Math.floor(rand() * rawVals.length)];
-      } else { // GBM — one step
-        v = lastVal * Math.exp((muLR - 0.5*sigmaLR**2) + sigmaLR * boxMuller(rand));
+    // ── AR(1) via OLS: regress x[t] on x[t-1] ─────────────────────────
+    // Model: x[t] = alpha_ou + ar1 * x[t-1] + epsilon
+    // OLS: ar1 = Cov(x[t], x[t-1]) / Var(x[t-1])
+    const xs_ou = rawVals.slice(0, -1);
+    const ys_ou = rawVals.slice(1);
+    const mu_x  = xs_ou.reduce((a,b)=>a+b,0) / xs_ou.length;
+    const mu_y  = ys_ou.reduce((a,b)=>a+b,0) / ys_ou.length;
+    const cov_xy = xs_ou.reduce((s,x,i)=>s+(x-mu_x)*(ys_ou[i]-mu_y),0) / (xs_ou.length-1);
+    const var_x  = xs_ou.reduce((s,x)=>s+(x-mu_x)**2,0) / (xs_ou.length-1);
+    const ar1       = cov_xy / var_x;                   // AR(1) coefficient (typically 0.3–0.8)
+    const alpha_ou  = mu_y - ar1 * mu_x;               // intercept
+    const lr_mean   = alpha_ou / (1 - ar1);             // long-run mean from AR(1)
+    // Residual std dev (degrees of freedom = n-2)
+    const sigma_resid = Math.sqrt(
+      xs_ou.reduce((s,x,i)=>s+(ys_ou[i]-(alpha_ou+ar1*x))**2, 0) / (xs_ou.length - 2)
+    );
+ 
+    // ── Helper: one simulation step from value v ──────────────────────
+    function oneStep(v) {
+      const z = boxMuller(rand);
+      switch (method) {
+        case 'normal':
+          // AR(1) / Ornstein-Uhlenbeck mean-reverting process
+          // x[t+1] = alpha_ou + ar1 * x[t] + sigma_resid * Z
+          // Equivalent to: x[t+1] = x[t] + (1-ar1)*(lr_mean - x[t]) + sigma_resid*Z
+          return alpha_ou + ar1 * v + sigma_resid * z;
+ 
+        case 'lognormal':
+          // Log-normal: proportional shocks based on historical log-returns
+          // S_{t+1} = S_t · exp((μ_lr - 0.5·σ_lr²) + σ_lr·Z)
+          // Drift term corrected for Jensen's inequality (Itô's lemma)
+          return v * Math.exp((muLR - 0.5 * sigmaLR * sigmaLR) + sigmaLR * z);
+ 
+        case 'bootstrap':
+          // Non-parametric: resample actual observed log-returns
+          // Applies a randomly drawn historical year's change to current value
+          const drawnLR = logReturns[Math.floor(rand() * logReturns.length)];
+          return v * Math.exp(drawnLR);
+ 
+        case 'gbm':
+          // Geometric Brownian Motion — same formula as lognormal
+          // but explicitly uses GBM drift = muLR (no Jensen correction)
+          // Classic Black-Scholes framework
+          return v * Math.exp(muLR + sigmaLR * z);
+ 
+        default:
+          return v;
       }
-      simsCurrent.push(v);
     }
  
-    // Multi-step forecast
+    // ── Simulate current-period distribution (1 step from lastVal) ───
+    // This answers: "what is next year's value likely to be?"
+    const simsCurrent = Array.from({length: n}, () => oneStep(lastVal));
+ 
+    // ── Multi-step forecast: simulate all n paths together ────────────
+    // Each path walks forward step-by-step. We store the cross-section
+    // at each time point to compute percentiles — O(n × steps), correct.
+    const paths = Array.from({length: n}, () => lastVal); // start all paths at lastVal
     const forecastPercentiles = { p5:[], p10:[], p15:[], p20:[], p50:[], p90:[], p95:[], p99:[] };
-    for (let t=1; t<=steps; t++) {
-      const vals = [];
-      for (let i=0; i<n; i++) {
-        let v = lastVal;
-        for (let s=0; s<t; s++) {
-          if (method === 'normal') {
-            v = v + sigma * boxMuller(rand);
-          } else if (method === 'lognormal') {
-            v = v * Math.exp((muLR - 0.5*sigmaLR**2) + sigmaLR * boxMuller(rand));
-          } else if (method === 'bootstrap') {
-            const r = rawVals[Math.floor(rand()*rawVals.length)];
-            v = mu > 0 ? v * (r/mu) : v + (r - mu);
-          } else { // GBM
-            v = v * Math.exp((muLR - 0.5*sigmaLR**2) + sigmaLR * boxMuller(rand));
-          }
-        }
-        vals.push(v);
+ 
+    for (let t = 0; t < steps; t++) {
+      for (let i = 0; i < n; i++) {
+        paths[i] = oneStep(paths[i]);
       }
+      // Snapshot the cross-section at this time step
+      const snap = [...paths];
       Object.keys(forecastPercentiles).forEach(key => {
-        const p = parseInt(key.replace('p',''));
-        forecastPercentiles[key].push(percentile(vals, p));
+        forecastPercentiles[key].push(percentile(snap, parseInt(key.replace('p',''))));
       });
     }
  
-    results[col] = { simsCurrent, mu, sigma, forecastPercentiles, steps, stepLabel, years };
+    results[col] = { simsCurrent, mu, sigma, muLR, sigmaLR, lastVal, forecastPercentiles, steps, stepLabel, years };
   });
  
   return results;
@@ -853,19 +888,29 @@ function renderResults(results) {
   const lo = percentile(d.simsCurrent, 5);
   const hi = percentile(d.simsCurrent, 95);
   const fmt = v => {
-    if (Math.abs(v) >= 1e9) return (v/1e9).toFixed(2) + 'B';
-    if (Math.abs(v) >= 1e6) return (v/1e6).toFixed(2) + 'M';
-    if (Math.abs(v) >= 1e3) return (v/1e3).toFixed(1) + 'K';
-    return v.toFixed(2);
+    if (v === null || v === undefined || isNaN(v) || !isFinite(v)) return '—';
+    const abs = Math.abs(v);
+    if (abs >= 1e12) return (v/1e12).toFixed(3) + 'T';
+    if (abs >= 1e9)  return (v/1e9).toFixed(3)  + 'B';
+    if (abs >= 1e6)  return (v/1e6).toFixed(3)  + 'M';
+    if (abs >= 1e5)  return (v/1e3).toFixed(1)  + 'K';
+    // Below 100,000: show full number with comma separators and 2 decimal places
+    // This ensures values like 1,618.39 or 99.50 display correctly — no K/M nonsense
+    if (abs >= 0.01) return v.toLocaleString('en-IN', {minimumFractionDigits:2, maximumFractionDigits:2});
+    return v.toFixed(6);
   };
  
+  // Annual drift % from log-returns
+  const annualDriftPct = (Math.exp(d.muLR) - 1) * 100;
+  const driftSign = annualDriftPct >= 0 ? '+' : '';
+ 
   document.getElementById('stat-row').innerHTML = `
-    <div class="stat-chip"><div class="s-label">Mean</div><div class="s-val">${fmt(mean)}</div></div>
-    <div class="stat-chip"><div class="s-label">Median (P50)</div><div class="s-val">${fmt(med)}</div></div>
-    <div class="stat-chip"><div class="s-label">Std Dev</div><div class="s-val">${fmt(d.sigma)}</div></div>
+    <div class="stat-chip"><div class="s-label">Last Observed Value</div><div class="s-val">${fmt(d.lastVal)}</div></div>
+    <div class="stat-chip"><div class="s-label">Historical Mean</div><div class="s-val">${fmt(d.mu)}</div></div>
+    <div class="stat-chip"><div class="s-label">Historical Std Dev</div><div class="s-val">${fmt(d.sigma)}</div></div>
+    <div class="stat-chip"><div class="s-label">Avg Annual Drift</div><div class="s-val" style="color:${annualDriftPct>=0?'#4a7c4e':'#8B1A1A'}">${driftSign}${annualDriftPct.toFixed(2)}%</div></div>
+    <div class="stat-chip"><div class="s-label">Simulated Next-Yr P50</div><div class="s-val">${fmt(med)}</div></div>
     <div class="stat-chip"><div class="s-label">5th–95th Range</div><div class="s-val">${fmt(lo)} – ${fmt(hi)}</div></div>
-    <div class="stat-chip"><div class="s-label">Simulations Run</div><div class="s-val">${d.simsCurrent.length.toLocaleString()}</div></div>
-    <div class="stat-chip"><div class="s-label">Simulated Column</div><div class="s-val" style="font-size:0.85rem">${col}</div></div>
   `;
  
   // Percentile pills
@@ -1014,4 +1059,3 @@ function buildForecastTable(d, fmt) {
 </script>
 </body>
 </html>
- 
