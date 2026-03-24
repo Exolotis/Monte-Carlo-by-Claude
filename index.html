@@ -571,42 +571,72 @@
 </div>
  
 <div class="toast" id="toast"></div>
- 
-<footer style="background:linear-gradient(135deg,var(--ganache) 0%,var(--dark-choc) 60%,var(--chocolate) 100%);margin-top:48px;padding:36px 48px 28px;position:relative;overflow:hidden;">
+ <footer style="background:linear-gradient(135deg,var(--ganache) 0%,var(--dark-choc) 60%,var(--chocolate) 100%);margin-top:48px;padding:36px 48px 28px;position:relative;overflow:hidden;">
+  
   <div style="position:absolute;inset:0;background:repeating-linear-gradient(-45deg,transparent,transparent 30px,rgba(255,255,255,0.015) 30px,rgba(255,255,255,0.015) 60px);pointer-events:none;"></div>
+  
   <div style="max-width:1300px;margin:0 auto;position:relative;z-index:1;">
+    
+    <!-- TOP ROW -->
     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:24px;">
+      
+      <!-- LEFT: BRAND -->
       <div>
-        <div style="font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--warm-sand);letter-spacing:2px;font-weight:700;">EXOLOTIS</div>
-        <div style="font-size:0.78rem;color:var(--caramel);letter-spacing:3px;text-transform:uppercase;margin-top:4px;">Monte Carlo Simulator</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--warm-sand);letter-spacing:2px;font-weight:700;">
+          EXOLOTIS
+        </div>
+        <div style="font-size:0.78rem;color:var(--caramel);letter-spacing:3px;text-transform:uppercase;margin-top:4px;">
+          Monte Carlo Simulator
+        </div>
       </div>
+
+      <!-- RIGHT: CONTACTS -->
       <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-end;">
-<a href="tel:+919606783762" 
-   style="display:flex;align-items:center;gap:8px;color:var(--warm-sand);text-decoration:none;font-size:0.88rem;font-weight:600;">
-   📞 +91 96067 83762
-</a>
+        
+        <a href="tel:+919606783762" 
+           style="display:flex;align-items:center;gap:8px;color:var(--warm-sand);text-decoration:none;font-size:0.88rem;font-weight:600;">
+           📞 +91 96067 83762
+        </a>
 
-<a href="mailto:prasanna.bhatkar990@gmail.com" 
-   style="display:flex;align-items:center;gap:8px;color:var(--warm-sand);text-decoration:none;font-size:0.88rem;font-weight:600;">
-   ✉️ prasanna.bhatkar990@gmail.com
-</a>
+        <a href="mailto:prasanna.bhatkar990@gmail.com" 
+           style="display:flex;align-items:center;gap:8px;color:var(--warm-sand);text-decoration:none;font-size:0.88rem;font-weight:600;">
+           ✉️ prasanna.bhatkar990@gmail.com
+        </a>
 
-<a href="https://github.com/Exolotis" target="_blank"
-   style="display:flex;align-items:center;gap:8px;color:var(--warm-sand);text-decoration:none;font-size:0.88rem;font-weight:600;">
-   🍩 github.com/Exolotis
-</a>
+        <a href="https://github.com/Exolotis" target="_blank"
+           style="display:flex;align-items:center;gap:8px;color:var(--warm-sand);text-decoration:none;font-size:0.88rem;font-weight:600;">
+           🍩 github.com/Exolotis
+        </a>
 
-<a href="https://www.linkedin.com/in/prasanna-bhatkar/" target="_blank"
-   style="display:flex;align-items:center;gap:8px;color:var(--warm-sand);text-decoration:none;font-size:0.88rem;font-weight:600;">
-   🔗 linkedin.com/in/prasanna-bhatkar
-</a>
+        <a href="https://www.linkedin.com/in/prasanna-bhatkar/" target="_blank"
+           style="display:flex;align-items:center;gap:8px;color:var(--warm-sand);text-decoration:none;font-size:0.88rem;font-weight:600;">
+           🔗 linkedin.com/in/prasanna-bhatkar
+        </a>
+
+      </div>
     </div>
-    <div style="border-top:1px solid rgba(200,169,126,0.2);margin-top:24px;padding-top:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-      <div style="font-size:0.75rem;color:rgba(240,230,211,0.45);">© <span id="footer-year"></span> Exolotis. All rights reserved.</div>
-      <div style="font-size:0.72rem;color:rgba(200,169,126,0.5);letter-spacing:0.5px;text-transform:uppercase;">Built for precision · Powered by Monte Carlo</div>
+
+    <!-- BOTTOM ROW -->
+    <div style="border-top:1px solid rgba(200,169,126,0.2);margin-top:24px;padding-top:18px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;">
+      
+      <!-- LEFT -->
+      <div style="font-size:0.72rem;color:rgba(200,169,126,0.5);letter-spacing:0.5px;text-transform:uppercase;">
+        Built for precision · Powered by Monte Carlo
+      </div>
+
+      <!-- CENTER -->
+      <div style="font-size:0.75rem;color:rgba(240,230,211,0.45);text-align:center;">
+        © <span id="footer-year"></span> Exolotis. All rights reserved.
+      </div>
+
+      <!-- RIGHT (spacer) -->
+      <div></div>
+
     </div>
+
   </div>
 </footer>
+
  
 <script>
 // ── Clock ──────────────────────────────────────────────────────────
